@@ -1,0 +1,12 @@
+Add following lines into tinyrenderer.pro:
+LIBS += -LSDL2-2.0.3/i686-w64-mingw32/lib -lSDL2
+INCLUDEPATH += SDL2-2.0.3/i686-w64-mingw32/include
+
+Rename main function into qMain if build fails
+
+Add custom build steps:
+cmd /C copy /Y Qt\Qt5.5.0\Tools\mingw492_32\bin\*.dll .
+cmd /C copy /Y SDL2-2.0.3\i686-w64-mingw32\bin\SDL2.dll .
+
+Add program arguments:
+..\tinyrenderer\obj\african_head\african_head.obj

@@ -70,7 +70,7 @@ void draw_3d_model_simple(ModelPtrArray const& models, TGAImage &frame, float *z
     }
 }
 
-int main(int argc, char** argv) {
+int qMain(int argc, char** argv) {
     if (2>argc) {
         std::cerr << "Usage: " << argv[0] << " obj/model.obj" << std::endl;
         return 1;
