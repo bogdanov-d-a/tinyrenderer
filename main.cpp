@@ -1,14 +1,13 @@
 #include <vector>
 #include <limits>
-#include <memory>
 #include <iostream>
 #include "tgaimage.h"
-#include "model.h"
 #include "geometry.h"
 #include "our_gl.h"
 #include "shader.h"
 #include "sdlwindow.h"
 #include <SDL2/SDL.h>
+#include "renderthread.h"
 
 const int WIDTH  = 800;
 const int HEIGHT = 800;
@@ -17,9 +16,6 @@ Vec3f LIGHT_DIR(1,1,1);
 Vec3f       EYE(1,1,3);
 Vec3f    CENTER(0,0,0);
 Vec3f        UP(0,1,0);
-
-typedef std::shared_ptr<Model> ModelPtr;
-typedef std::vector<ModelPtr> ModelPtrArray;
 
 Vec3f get_rotated_eye()
 {
@@ -47,26 +43,27 @@ void draw_3d_model_tile(Model &model, FrameTile &frame)
     }
 }
 
-void draw_3d_model_simple(ModelPtrArray const& models, TGAImage &frame, float *zbuffer)
+void draw_3d_model_simple(TGAImage &frame, float *zbuffer, std::vector<FrameTile> &tiles, std::vector<std::unique_ptr<RenderThread>> &threads)
 {
-    const int width1 = frame.get_width() / 2;
-    const int width2 = frame.get_width() - width1;
-    const int height1 = frame.get_height() / 2;
-    const int height2 = frame.get_height() - height1;
+    for (auto &tile : tiles)
+        tile.init(frame, zbuffer);
 
-    FrameTile tile1(Vec2i(0, 0), Vec2i(width1, height1));
-    FrameTile tile2(Vec2i(width1, 0), Vec2i(width2, height1));
-    FrameTile tile3(Vec2i(0, height1), Vec2i(width2, height2));
-    FrameTile tile4(Vec2i(width1, height1), Vec2i(width2, height2));
-    tile1.init(frame, zbuffer);
-    tile2.init(frame, zbuffer);
-    tile3.init(frame, zbuffer);
-    tile4.init(frame, zbuffer);
-    for (auto const& pModel : models) {
-        draw_3d_model_tile(*pModel, tile1);
-        draw_3d_model_tile(*pModel, tile2);
-        draw_3d_model_tile(*pModel, tile3);
-        draw_3d_model_tile(*pModel, tile4);
+    for (auto &thread : threads)
+        thread->Wake();
+
+    while (true)
+    {
+        bool end = true;
+        for (auto &thread : threads)
+        {
+            if (!thread->Idle())
+                end = false;
+        }
+
+        if (end)
+            break;
+
+        QThread::msleep(10);
     }
 }
 
@@ -88,6 +85,22 @@ int qMain(int argc, char** argv) {
     SDLWindow window(WIDTH, HEIGHT);
     std::shared_ptr<TGAImage> pFrame;
     window.swapBuffers(pFrame);
+
+    const int width1 = pFrame->get_width() / 2;
+    const int width2 = pFrame->get_width() - width1;
+    const int height1 = pFrame->get_height() / 2;
+    const int height2 = pFrame->get_height() - height1;
+
+    std::vector<FrameTile> tiles;
+    tiles.push_back(FrameTile(Vec2i(0, 0), Vec2i(width1, height1)));
+    tiles.push_back(FrameTile(Vec2i(width1, 0), Vec2i(width2, height1)));
+    tiles.push_back(FrameTile(Vec2i(0, height1), Vec2i(width2, height2)));
+    tiles.push_back(FrameTile(Vec2i(width1, height1), Vec2i(width2, height2)));
+
+    std::vector<std::unique_ptr<RenderThread>> threads;
+    for (auto &tile : tiles)
+        threads.push_back(std::unique_ptr<RenderThread>(new RenderThread(models, tile, draw_3d_model_tile)));
+
     window.do_on_idle([&]() {
         pFrame->clear();
         for (int i=WIDTH*HEIGHT; i--; zbuffer[i] = -std::numeric_limits<float>::max());
@@ -95,7 +108,7 @@ int qMain(int argc, char** argv) {
         lookat(eye, CENTER, UP);
         viewport(WIDTH/8, HEIGHT/8, WIDTH*3/4, HEIGHT*3/4);
         projection(-1.f/(eye-CENTER).norm());
-        draw_3d_model_simple(models, *pFrame, zbuffer.get());
+        draw_3d_model_simple(*pFrame, zbuffer.get(), tiles, threads);
         pFrame->flip_vertically(); // to place the origin in the bottom left corner of the image
         window.swapBuffers(pFrame);
     });
