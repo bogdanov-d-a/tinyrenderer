@@ -115,6 +115,24 @@ int qMain(int argc, char** argv) {
     window.show();
     window.wait_for_closed();
 
+    for (auto &thread : threads)
+        thread->Stop();
+
+    while (true)
+    {
+        bool end = true;
+        for (auto &thread : threads)
+        {
+            if (thread->isRunning())
+                end = false;
+        }
+
+        if (end)
+            break;
+
+        QThread::msleep(10);
+    }
+
     return 0;
 }
 

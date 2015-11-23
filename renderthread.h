@@ -17,12 +17,13 @@ public:
     RenderThread(ModelPtrArray const& models, FrameTile &tile, DrawFunction draw);
     void Wake();
     bool Idle() const;
+    void Stop();
 
 protected:
     void run();
 
 private:
-    bool idle;
+    bool idle, stopped;
     ModelPtrArray const& models;
     FrameTile &tile;
     DrawFunction draw;
