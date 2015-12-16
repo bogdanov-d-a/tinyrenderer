@@ -9,6 +9,7 @@
 #include "shader.h"
 #include "sdlwindow.h"
 #include <SDL2/SDL.h>
+#include "mymanager.h"
 
 const int WIDTH  = 800;
 const int HEIGHT = 800;
@@ -47,7 +48,7 @@ void draw_3d_model_tile(Model &model, FrameTile &frame)
     }
 }
 
-void draw_3d_model_simple(ModelPtrArray const& models, TGAImage &frame, float *zbuffer)
+void draw_3d_model_simple(ModelPtrArray const& models, TGAImage &frame, float *zbuffer, MyManager &manager)
 {
     const int width1 = frame.get_width() / 2;
     const int width2 = frame.get_width() - width1;
@@ -62,12 +63,36 @@ void draw_3d_model_simple(ModelPtrArray const& models, TGAImage &frame, float *z
     tile2.init(frame, zbuffer);
     tile3.init(frame, zbuffer);
     tile4.init(frame, zbuffer);
-    for (auto const& pModel : models) {
-        draw_3d_model_tile(*pModel, tile1);
-        draw_3d_model_tile(*pModel, tile2);
-        draw_3d_model_tile(*pModel, tile3);
-        draw_3d_model_tile(*pModel, tile4);
-    }
+
+    manager.AddTask([&models, &tile1](){
+        for (auto const& pModel : models)
+        {
+            draw_3d_model_tile(*pModel, tile1);
+        }
+    });
+
+    manager.AddTask([&models, &tile2](){
+        for (auto const& pModel : models)
+        {
+            draw_3d_model_tile(*pModel, tile2);
+        }
+    });
+
+    manager.AddTask([&models, &tile3](){
+        for (auto const& pModel : models)
+        {
+            draw_3d_model_tile(*pModel, tile3);
+        }
+    });
+
+    manager.AddTask([&models, &tile4](){
+        for (auto const& pModel : models)
+        {
+            draw_3d_model_tile(*pModel, tile4);
+        }
+    });
+
+    manager.WaitForIdle();
 }
 
 int qMain(int argc, char** argv) {
@@ -80,6 +105,8 @@ int qMain(int argc, char** argv) {
         const char *filePath = argv[m];
         models.push_back(std::make_shared<Model>(filePath));
     }
+
+    MyManager manager(4);
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
@@ -95,7 +122,7 @@ int qMain(int argc, char** argv) {
         lookat(eye, CENTER, UP);
         viewport(WIDTH/8, HEIGHT/8, WIDTH*3/4, HEIGHT*3/4);
         projection(-1.f/(eye-CENTER).norm());
-        draw_3d_model_simple(models, *pFrame, zbuffer.get());
+        draw_3d_model_simple(models, *pFrame, zbuffer.get(), manager);
         pFrame->flip_vertically(); // to place the origin in the bottom left corner of the image
         window.swapBuffers(pFrame);
     });

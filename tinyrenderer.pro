@@ -9,7 +9,10 @@ HEADERS += \
     tgaimage.h \
     sdlwindow.h \
     shader.h \
-    frametile.h
+    frametile.h \
+    myqueue.h \
+    myworker.h \
+    mymanager.h
 
 SOURCES += \
     geometry.cpp \
@@ -19,4 +22,6 @@ SOURCES += \
     tgaimage.cpp \
     sdlwindow.cpp \
     shader.cpp \
-    frametile.cpp
+    frametile.cpp \
+    myworker.cpp \
+    mymanager.cpp
